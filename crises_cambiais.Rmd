@@ -185,4 +185,28 @@ ggplot(reservas_var, aes(x = date, y = var_acum)) +
   theme_economist_white()
 ```
 
+## Questões {.build}
 
+### Quais os principais motivos? {.box-12 .bg-green}
+ 
+- Em geral monetários e financeiros
+- Política cambial sem contrapartida fiscal
+- Dependência de capitais externos voláteis
+    
+### Quais os catalisadores? {.box-12 .bg-green}
+
+- Nível crítico de reservas em 1999 e 2002
+- Crise externa e contágio em 2008 e 2016
+
+## Questões | continuação {.build}
+
+### Quais os sintomas? {.box-12 .bg-green}
+
+- Desvalorização da moeda local
+- Perda de reservas
+    
+### Quais os impactos? {.box-12 .bg-green}
+
+- Inflação
+- Recessão e desemprego
+- Instabilidade política
