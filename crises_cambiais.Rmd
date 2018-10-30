@@ -1,0 +1,188 @@
+---
+title: "Crises Cambiais no Brasil"
+author: "Rafael F. Bressan"
+date: "`r Sys.Date()`"
+output:
+  iosp::ioslides_plus:
+    footer: "Economia Internacional"
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r inicio, include=FALSE}
+# Verifies if needed packages are installed
+pkgs_att <- c("BETS",
+              "tidyverse",
+              "ggthemes",
+              "timetk",
+              "tibbletime")
+new.pkgs <- pkgs_att[!(pkgs_att %in% .packages(all.available = TRUE))]
+
+# Installs new packages
+if (length(new.pkgs)) install.packages(new.pkgs)
+
+# Loads and attaches all needed packages
+for (s in pkgs_att) {
+  if (!library(s, character.only = TRUE, logical.return = TRUE)) 
+    stop("Error loading packages.")
+}
+```
+
+## Introdução
+
+Analisar o comportamento de 4 variáveis ligadas ao mercado de câmbio brasileiro
+
+- Taxa de câmbio nominal (PTAX800)
+- Taxa de câmbio real
+- Fluxos de capitais (Reservas)
+
+```{r dados, cache=TRUE, include=FALSE}
+cambio_nom <- as_tibble(BETSget(1, from = "1995-01-01", to = "2018-10-26"))
+cambio_real <- tk_tbl(BETSget(11752, from = "1995-01-01", to = "2018-10-26"))
+reservas <- as_tibble(BETSget(13621, from = "1995-01-01", to = "2018-10-26"))
+```
+
+Os períodos considerados foram: 
+
+### {.box-12 .bg-green}
+
+```{r periodos, results="asis"}
+periodos <- tribble(
+  ~periodo,       ~inicio,      ~fim,
+  "Maxi-D",       "1998-09-01", "1999-04-01",
+  "Lula lá",      "2002-06-01", "2003-04-01",
+  "2008/09",      "2008-06-01", "2009-04-01",
+  "Impeachment",  "2015-12-01", "2016-09-01"
+) %>% 
+  mutate(inicio = as.Date(inicio),
+         fim = as.Date(fim))
+
+periodos %>% 
+  mutate_at(c("inicio", "fim"), funs(format(., format = "%Y-%m"))) %>% 
+  knitr::kable()
+```
+
+## Taxa de Câmbio Nominal
+
+```{r cambio_nom_plot}
+ggplot(cambio_nom, aes(x = date, y = value)) + 
+  geom_line(color = "darkgreen") +
+  labs(title = "Câmbio nominal. R$/US$",
+       x = "Ano",
+       y = "R$/US$",
+       caption = "Fonte: Banco Central do Brasil.") +
+  scale_y_continuous() +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") +
+  scale_color_viridis_d(option = "B") +
+  annotate("text", 
+           x = c(as.Date("1998-06-01"),
+                 as.Date("2003-01-01"),
+                 as.Date("2009-01-01"),
+                 as.Date("2016-01-01")), 
+           y = c(2.5, 4.1, 2.6, 4.3), 
+           label = periodos$periodo) +
+  annotate("rect", 
+           xmin = periodos$inicio, 
+           xmax = periodos$fim, 
+           ymin = -Inf, 
+           ymax = Inf,
+           alpha = .2) + 
+  theme_economist_white()
+```
+
+## Taxa de Câmbio Real Efetiva
+
+```{r cambio_real_plot}
+ggplot(cambio_real, aes(x = date, y = value)) + 
+  geom_line(color = "darkgreen") +
+  labs(title = "Índice câmbio real efetivo. Jun/1994 = 100.",
+       x = "Ano",
+       y = "R$/US$",
+       caption = "Fonte: Banco Central do Brasil.") +
+  scale_y_continuous() +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") +
+  scale_color_viridis_d() +
+  annotate("text", 
+           x = c(as.Date("1998-06-01"),
+                 as.Date("2003-01-01"),
+                 as.Date("2009-01-01"),
+                 as.Date("2016-01-01")), 
+           y = c(120, 180, 115, 140), 
+           label = periodos$periodo) +
+  annotate("rect", 
+           xmin = periodos$inicio, 
+           xmax = periodos$fim, 
+           ymin = -Inf, 
+           ymax = Inf,
+           alpha = .2) + 
+  theme_economist_white()
+```
+
+## Reservas Internacionais
+
+```{r reservas_plot}
+reservas %>%
+  mutate(value = value / 1e3) %>% 
+  ggplot(aes(x = date, y = value)) + 
+  geom_line(color = "darkgreen") +
+  labs(title = "Reservas Internacionais",
+       x = "Ano",
+       y = "Reservas em bilhões de US$",
+       caption = "Fonte: Banco Central do Brasil") +
+#  scale_y_continuous(trans = scales::log10_trans()) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") +
+  scale_color_viridis_d() +
+  annotate("text",
+           x = c(as.Date("1998-06-01"),
+                 as.Date("2003-01-01"),
+                 as.Date("2009-01-01"),
+                 as.Date("2016-01-01")),
+           y = c(100, 70, 280, 320),
+           label = periodos$periodo) +
+  theme_economist_white() +
+  annotate("rect", 
+           xmin = periodos$inicio, 
+           xmax = periodos$fim, 
+           ymin = -Inf, 
+           ymax = Inf,
+           alpha = .2) 
+```
+
+## Reservas Internacionais | variação
+
+```{r reservas_var_plot}
+reservas_var <- reservas %>% 
+  mutate(variacao = log(value / lag(value))) %>% 
+  na.omit() %>% 
+  as_tbl_time(index = date) %>% 
+  collapse_by("monthly") %>% 
+  group_by(date) %>% 
+  summarise(var_acum = sum(variacao))
+ggplot(reservas_var, aes(x = date, y = var_acum)) + 
+  geom_line(color = "darkgreen") +
+  labs(title = "Variações Reservas Internacionais.",
+       x = "Ano",
+       y = "Variação percentual (%)",
+       caption = "Fonte: Banco Central do Brasil.") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_x_date(date_breaks = "2 years", date_labels = "%Y") +
+  scale_color_viridis_d() +
+  annotate("text", 
+           x = c(as.Date("1998-06-01"),
+                 as.Date("2003-01-01"),
+                 as.Date("2009-01-01"),
+                 as.Date("2016-01-01")), 
+           y = c(-0.35, -0.15, -0.1, -0.1), 
+           label = periodos$periodo) +
+  annotate("rect", 
+           xmin = periodos$inicio, 
+           xmax = periodos$fim, 
+           ymin = -Inf, 
+           ymax = Inf,
+           alpha = .2) + 
+  theme_economist_white()
+```
+
+
